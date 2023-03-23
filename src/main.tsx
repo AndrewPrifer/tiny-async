@@ -3,6 +3,9 @@ import { createHook } from "../lib/main";
 
 const useHelloQuery = createHook((name: string): Promise<string> => {
   return new Promise((resolve) => {
+    if (name === "Error") {
+      throw new Error("Error");
+    }
     setTimeout(() => {
       resolve(`I'm ${name}`);
     }, 5000);
@@ -32,6 +35,7 @@ function App() {
       >
         Peter
       </button>
+      <button onClick={() => query.run("Error")}>Error</button>
       <button onClick={() => query.cancel()}>Cancel</button>
       <pre>{JSON.stringify(query)}</pre>
     </div>
