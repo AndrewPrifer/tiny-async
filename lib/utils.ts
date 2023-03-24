@@ -19,32 +19,34 @@ export const useEventCallback = <A extends any[], R>(
   );
 };
 
-export interface Deferred<PromiseType> {
+export interface ControlledPromise<PromiseType> {
   resolve: (d: PromiseType) => void;
   reject: (d: unknown) => void;
   promise: Promise<PromiseType>;
   status: "pending" | "resolved" | "rejected";
 }
 
-export function defer<PromiseType>(): Deferred<PromiseType> {
+export function makeControlledPromise<
+  PromiseType
+>(): ControlledPromise<PromiseType> {
   let resolve: (d: PromiseType) => void;
   let reject: (d: unknown) => void;
   const promise = new Promise<PromiseType>((rs, rj) => {
     resolve = (v) => {
       rs(v);
-      deferred.status = "resolved";
+      controlledPromise.status = "resolved";
     };
     reject = (v) => {
       rj(v);
-      deferred.status = "rejected";
+      controlledPromise.status = "rejected";
     };
   });
 
-  const deferred: Deferred<PromiseType> = {
+  const controlledPromise: ControlledPromise<PromiseType> = {
     resolve: resolve!,
     reject: reject!,
     promise,
     status: "pending",
   };
-  return deferred;
+  return controlledPromise;
 }

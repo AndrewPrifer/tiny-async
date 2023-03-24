@@ -8,9 +8,26 @@ const useHelloQuery = createHook((name: string): Promise<string> => {
     }
     setTimeout(() => {
       resolve(`I'm ${name}`);
-    }, 5000);
+    }, 2000);
   });
 });
+
+const useAbortableHelloQuery = createHook(
+  (name: string, { signal }: { signal: AbortSignal }): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      signal.addEventListener("abort", () => {
+        reject(signal.reason);
+      });
+      if (name === "Error") {
+        reject(new Error("Error"));
+      }
+      setTimeout(() => {
+        resolve(`I'm ${name}`);
+      }, 2000);
+    });
+  },
+  { abortable: true }
+);
 
 function App() {
   const query = useHelloQuery();
@@ -20,7 +37,6 @@ function App() {
       <button
         onClick={async () => {
           const res = await query.run("Andrew");
-
           console.log(res);
         }}
       >
@@ -35,7 +51,13 @@ function App() {
       >
         Peter
       </button>
-      <button onClick={() => query.run("Error")}>Error</button>
+      <button
+        onClick={async () => {
+          query.run("Error");
+        }}
+      >
+        Error
+      </button>
       <button onClick={() => query.cancel()}>Cancel</button>
       <pre>{JSON.stringify(query)}</pre>
     </div>

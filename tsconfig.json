@@ -11,10 +11,9 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "noEmit": true,
-    "declaration": true,
     "noImplicitReturns": true,
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src", "lib"]
 }
