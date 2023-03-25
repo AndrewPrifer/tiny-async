@@ -1,7 +1,7 @@
 # Tiny Async
 
-Tiny, flexible and ergonomic async data fetching & RPC library for React with memoization support.
-Tiny Async helps you easily create bespoke React hooks that memoize async functions and manage promise state.
+Tiny, flexible and ergonomic and async data fetching & RPC library for React with memoization support.
+Tiny Async helps you easily create bespoke React hooks that automatically memoize async functions and manage promise state.
 
 - Manages `data`, `error`, `isPending`, `isResolved`, `isRejected` state
 - Gracefully handles race conditions and stale data
@@ -69,6 +69,17 @@ function App() {
   );
 }
 ```
+
+## Why not `useSWR` or `react-query`?
+
+There is no one size fits all solution.
+`useSWR` and `react-query` are both great libraries that automatically handle data fetching, but since there are so many different use cases, they have to include a myriad configuration options to cover them all. While they are convenient in many cases, their opinionated approach makes them feel inflexible and convoluted in others.
+
+Tiny Async takes a different approach.
+It handles only the problems that apply to _all_ asynchronous operations, and leaves the rest up to you.
+You are in control of how and when your data is fetched, stored and invalidated.
+Tiny Async takes care of memoization, state management and race conditions, so you don't have to.
+You can easily create data fetching hooks tailored to your specific use case.
 
 ## API
 
