@@ -1,5 +1,5 @@
 import pMemoize, { Options, AnyAsyncFunction } from "./pMemoize";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
 import { PopTuple } from "./typeUtils";
 
@@ -16,14 +16,23 @@ export const createHook = <
     : Parameters<Fn>;
 
   const cache = options?.cache ?? new Map();
+  const promiseCache = new Map<
+    CacheKeyType,
+    Promise<Awaited<ReturnType<Fn>>>
+  >();
   const cacheKey =
     options?.cacheKey ?? (([firstArgument]) => firstArgument as CacheKeyType);
   const abortable = options?.abortable ?? false;
 
-  const memoizedFn = pMemoize(fn, { cache, cacheKey, ...options });
+  const memoizedFn = pMemoize(fn, {
+    cache,
+    cacheKey,
+    promiseCache,
+    ...options,
+  });
 
   // Return a React hook managing the lifecycle of the memoized async function
-  return () => {
+  return ({ cancelOnUnmount = false } = {}) => {
     // State containing the status of the async function
     const [data, setData] = useState<Awaited<ReturnType<Fn>> | undefined>();
     const [error, setError] = useState<Error | undefined>();
@@ -49,7 +58,7 @@ export const createHook = <
       // The AbortController of the current execution
       abortController: AbortController;
       // The promise returned to the user
-      userPromise: Promise<Awaited<ReturnType<Fn>>>;
+      userPromise: Promise<{ data: Awaited<ReturnType<Fn>>; stale: boolean }>;
     } | null>(null);
 
     /**
@@ -58,24 +67,34 @@ export const createHook = <
     const cancel = useCallback(() => {
       if (!runningRef.current) return;
       runningRef.current.abortController.abort();
+      promiseCache.delete(runningRef.current.hash);
     }, []);
+
+    // Cancel on unmount
+    const cancelOnUnmountRef = useRef(cancelOnUnmount);
+    useEffect(() => {
+      cancelOnUnmountRef.current = cancelOnUnmount;
+    }, [cancelOnUnmount]);
+    useEffect(() => {
+      return () => {
+        if (cancelOnUnmountRef.current) {
+          cancel();
+        }
+      };
+    }, [cancel]);
 
     /**
      * Run the async function.
      */
     const run = useEventCallback((...args: RunParams) => {
       const hash = cacheKey(args);
-      // If an equivalent (by cache key) async operation is already running, we return the promise of the running operation instead of starting a new one
-      if (runningRef.current && runningRef.current.hash == hash) {
-        return runningRef.current.userPromise;
-      }
-
-      // We cancel the current execution, if any
-      cancel();
 
       const executionSymbol = Symbol();
       const abortController = new AbortController();
-      const userPromise = makeControlledPromise<Awaited<ReturnType<Fn>>>();
+      const userPromise = makeControlledPromise<{
+        data: Awaited<ReturnType<Fn>>;
+        stale: boolean;
+      }>();
 
       // Preserve the state of the previous execution, in case we need to restore it upon cancelling the current execution
       const prevState = {
@@ -139,18 +158,24 @@ export const createHook = <
 
       promise
         .then((data) => {
-          // only set data and resolve the user promise if the execution is still running
+          // only set data and resolve the user promise if the promise is not aborted
           if (abortController.signal.aborted) return;
 
-          setData(data as Awaited<ReturnType<Fn>>);
-          setIsPending(false);
+          userPromise.resolve({
+            data: data as Awaited<ReturnType<Fn>>,
+            stale: runningRef.current?.symbol !== executionSymbol,
+          });
 
-          userPromise.resolve(data as Awaited<ReturnType<Fn>>);
+          // If the execution is still running, we set the data state
+          if (runningRef.current?.symbol === executionSymbol) {
+            setData(data as Awaited<ReturnType<Fn>>);
+            setIsPending(false);
+          }
         })
         .catch((error) => {
-          // only handle the error if the execution is still running
+          // only handle the error if the promise is not aborted
           if (abortController.signal.aborted) {
-            // If the execution is not running, but the error is the abort reason, we forward it to the user promise
+            // If the promise is aborted, but the error caught is the abort reason, we forward it to the user promise
             if (error === abortController.signal.reason) {
               userPromise.reject(error);
             }
@@ -161,10 +186,13 @@ export const createHook = <
           // Forward the error to the user promise
           userPromise.reject(error);
 
-          // Set error state
-          setError(error);
-          setIsPending(false);
-          setIsRejected(true);
+          // If the execution is still running, we set the error state
+          if (runningRef.current?.symbol === executionSymbol) {
+            // Set error state
+            setError(error);
+            setIsPending(false);
+            setIsRejected(true);
+          }
         });
 
       return userPromise.promise;

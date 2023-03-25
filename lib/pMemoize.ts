@@ -54,6 +54,8 @@ export type Options<
   readonly cache?: CacheStorage<CacheKeyType, AsyncReturnType<Fn>> | false;
 
   readonly abortable?: Abortable;
+
+  readonly promiseCache?: Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>;
 };
 
 export default function pMemoize<
@@ -72,7 +74,9 @@ export default function pMemoize<
 
   // Promise objects can't be serialized so we keep track of them internally and only provide their resolved values to `cache`
   // `Promise<AsyncReturnType<FunctionToMemoize>>` is used instead of `ReturnType<FunctionToMemoize>` because promise properties are not kept
-  const promiseCache = new Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>();
+  const promiseCache =
+    options?.promiseCache ??
+    new Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>();
 
   const memoized = function (
     this: any,
