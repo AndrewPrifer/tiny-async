@@ -1,5 +1,11 @@
 {
   "name": "tiny-async",
+  "description": "Tiny, flexible and ergonomic async data fetching & RPC library for React with memoization support",
+  "license": "MIT",
+  "author": "Andrew Prifer (https://github.com/AndrewPrifer)",
+  "repository": "AndrewPrifer/tiny-async",
+  "bugs": "https://github.com/AndrewPrifer/tiny-async/issues",
+  "homepage": "https://github.com/AndrewPrifer/tiny-async",
   "version": "0.0.0",
   "type": "module",
   "files": [
@@ -7,8 +13,10 @@
   ],
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
+  "types": "./dist/main.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/main.d.ts",
       "import": "./dist/main.js",
       "require": "./dist/main.cjs"
     }
