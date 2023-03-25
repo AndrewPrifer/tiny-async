@@ -1,6 +1,19 @@
 {
   "name": "tiny-async",
   "description": "Tiny, flexible and ergonomic async data fetching & RPC library for React with memoization support",
+  "keywords": [
+    "react",
+    "async",
+    "hook",
+    "request",
+    "query",
+    "data",
+    "cache",
+    "fetch",
+    "memoize",
+    "promise",
+    "swr"
+  ],
   "license": "MIT",
   "author": "Andrew Prifer (https://github.com/AndrewPrifer)",
   "repository": "AndrewPrifer/tiny-async",
