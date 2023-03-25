@@ -9,7 +9,7 @@ Tiny Async helps you easily create bespoke React hooks that memoize async functi
 - Supports abortable promises through `AbortController`
 - Supports memoizing async functions
 - Supports custom cache and hash implementations
-- Configurable with `keepPreviousData` and `cancelOnUnmount` options, on a per-hook, or per-run basis
+- Configurable with `keepPreviousData` and `cancelOnUnmount`, etc. options, on a per-hook, or per-run basis
 - Full TypeScript support
 
 ## Installation
