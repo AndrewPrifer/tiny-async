@@ -76,6 +76,8 @@ export const createHook = <
     const cancel = useCallback(() => {
       if (!runningRef.current) return;
       runningRef.current.abortController.abort();
+
+      // We can't leave canceled promises in the cache, because they might be reused before they receive the abort signal
       promiseCache.delete(runningRef.current.hash);
     }, []);
 
@@ -106,6 +108,9 @@ export const createHook = <
           };
 
           const hash = cacheKey(args);
+
+          // TODO: Add ability to pMemoize to actually ignore the cache. The below solution is not correct when the current execution errors or is canceled,
+          // because the cache will be left empty, and the next execution will be forced to run the function again.
 
           // If ignoreCache is set, we remove the cached promise, if any
           // NB ignoreCache doesn't mean that we won't store the result in the cache, it just means that we don't use the cached promise
