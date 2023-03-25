@@ -5,12 +5,14 @@ Tiny Async helps you easily create bespoke React hooks that memoize async functi
 
 - Zero dependencies
 - Provides `isPending`, `isResolved`, `isRejected`, etc. state
+- Gracefully handles race conditions and stale data
 - Provides `run` and `cancel` methods, giving you full control over when async functions run
 - Supports abortable promises through `AbortController`
 - Supports memoizing async functions
 - Supports custom cache and hash implementations
-- Configurable with `keepPreviousData` and `cancelOnUnmount`, etc. options, on a per-hook, or per-run basis
+- Options to customize state updates on a per-hook, or per-run basis
 - Full TypeScript support
+- Less than 1.3kb minified and gzipped
 
 ## Installation
 
@@ -58,3 +60,18 @@ function App() {
   );
 }
 ```
+
+## API
+
+🚧 Under construction
+
+## Examples
+
+🚧 Under construction
+
+## Acknowledgements
+
+- [@sindresorhus/p-memoize](https://github.com/sindresorhus/p-memoize)
+- [@slorber/react-async-hook](https://github.com/slorber/react-async-hook)
+- [@dai-shi/react-hooks-async](https://github.com/dai-shi/react-hooks-async)
+- [@marcin-piela/react-fetching-library](https://github.com/marcin-piela/react-fetching-library)
