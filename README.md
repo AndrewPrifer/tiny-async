@@ -3,8 +3,7 @@
 Tiny, flexible and ergonomic async data fetching & RPC library for React with memoization support.
 Tiny Async helps you easily create bespoke React hooks that memoize async functions and manage promise state.
 
-- Zero dependencies
-- Provides `isPending`, `isResolved`, `isRejected`, etc. state
+- Manages `data`, `error`, `isPending`, `isResolved`, `isRejected` state
 - Gracefully handles race conditions and stale data
 - Provides `run` and `cancel` methods, giving you full control over when async functions run
 - Supports abortable promises through `AbortController`
@@ -13,6 +12,7 @@ Tiny Async helps you easily create bespoke React hooks that memoize async functi
 - Options to customize state updates on a per-hook, or per-run basis
 - Full TypeScript support
 - Less than 1.3kb minified and gzipped
+- Zero dependencies
 
 ## Installation
 
