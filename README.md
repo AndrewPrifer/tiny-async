@@ -8,7 +8,7 @@ Tiny Async helps you easily create bespoke React hooks that memoize async functi
 - Gracefully handles race conditions and stale data
 - Provides `run` and `cancel` methods, giving you full control over when async functions run
 - Supports abortable promises through `AbortController`
-- Supports memoizing async functions
+- Automatically memoizes async functions
 - Supports custom cache and hash implementations
 - Options to customize state updates on a per-hook, or per-run basis
 - Full TypeScript support
@@ -25,6 +25,7 @@ yarn add tiny-async
 ```tsx
 import { createHook } from "tiny-async";
 
+// By default, Tiny Async will memoize your async function and cache the result based on the first parameter
 const useHelloAsync = createHook((name: string): Promise<string> => {
   return new Promise((resolve) => {
     setTimeout(() => {
