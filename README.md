@@ -72,7 +72,7 @@ Tiny Async is very flexible and can be used to create bespoke hooks for a variet
 Here is a tiny, useSWR-like hook built using Tiny Async in 70 lines of code:
 
 ```tsx
-// We let Tiny Async handle caching and state management for the useTinySWR hook by creating a helper hook
+// Let Tiny Async handle caching and state management by creating a helper hook
 const useSWRHelper = createHook((key: string, fetcher: () => Promise<any>) => {
   return fetcher();
 });
