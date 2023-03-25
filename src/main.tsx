@@ -44,12 +44,18 @@ const useTinySWR = <T,>(
   key: string,
   fetcher: () => Promise<T>,
   {
-    initialData,
+    fallbackData,
+    keepPreviousData = false,
   }: {
-    initialData?: T;
+    fallbackData?: T;
+    keepPreviousData?: boolean;
   } = {}
 ) => {
-  const { data, error, isPending, run, runFresh } = useTinySWRQuery();
+  const { data, error, isPending, run } = useTinySWRQuery({
+    keepPreviousData,
+  });
+
+  const [isReValidating, setIsRevalidating] = useState(false);
 
   const fetcherRef = useRef(fetcher);
 
@@ -62,26 +68,35 @@ const useTinySWR = <T,>(
   }, [key]);
 
   return {
-    data: data ?? initialData,
+    data: data ?? fallbackData,
     error,
-    isLoading: isPending,
+    isLoading: isPending && !isReValidating,
+    isValidating: isPending || isReValidating,
     revalidate: () => {
-      runFresh(key, fetcherRef.current);
+      setIsRevalidating(true);
+      run
+        .withOpts({ ignoreCache: true, keepPreviousData: true })(
+          key,
+          fetcherRef.current
+        )
+        .finally(() => {
+          setIsRevalidating(false);
+        });
     },
   };
 };
 
 function MyComponent({ name }: { name: string }) {
-  const { data, error, isLoading } = useTinySWR(
+  const { data, error, isLoading, isValidating, revalidate } = useTinySWR(
     name,
     () => {
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve(name);
+          resolve(`${name} ${Math.random()}`);
         }, 2000);
       });
     },
-    { initialData: "initial" }
+    { fallbackData: "Fallback data here" }
   );
 
   return (
@@ -89,6 +104,8 @@ function MyComponent({ name }: { name: string }) {
       <p>{data}</p>
       <p>{error && error.message}</p>
       <p>{isLoading && "loading"}</p>
+      <p>{isValidating && "validating"}</p>
+      <button onClick={() => revalidate()}>Revalidate</button>
     </div>
   );
 }
@@ -110,14 +127,18 @@ function App() {
       </button>
       <button
         onClick={() => {
-          query.runFresh("Peter").then((res) => {});
+          query.run
+            .withOpts({ ignoreCache: true })("Peter")
+            .then((res) => {
+              console.log(res);
+            });
         }}
       >
         Peter
       </button>
       <button
         onClick={async () => {
-          query.run("Error");
+          query.run("Error").then((res) => {});
         }}
       >
         Error
@@ -127,7 +148,7 @@ function App() {
         onClick={async () => {
           query.run("Sonia");
           query.cancel();
-          query.runFresh("Sonia");
+          query.run.withOpts({ ignoreCache: true })("Sonia");
         }}
       >
         Sonia
