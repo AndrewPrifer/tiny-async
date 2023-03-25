@@ -65,7 +65,10 @@ export const createHook = <
       // The AbortController of the current execution
       abortController: AbortController;
       // The promise returned to the user
-      userPromise: Promise<{ data: Awaited<ReturnType<Fn>>; stale: boolean }>;
+      userPromise: Promise<{
+        data: Awaited<ReturnType<Fn>>;
+        latest: boolean;
+      }>;
       // The options passed to the hook/run function
       runOptions: RunConfig;
     } | null>(null);
@@ -122,7 +125,7 @@ export const createHook = <
           const abortController = new AbortController();
           const userPromise = makeControlledPromise<{
             data: Awaited<ReturnType<Fn>>;
-            stale: boolean;
+            latest: boolean;
           }>();
 
           // Preserve the state of the previous execution, in case we need to restore it upon cancelling the current execution
@@ -196,7 +199,7 @@ export const createHook = <
 
               userPromise.resolve({
                 data: data as Awaited<ReturnType<Fn>>,
-                stale: runningRef.current?.symbol !== executionSymbol,
+                latest: runningRef.current?.symbol !== executionSymbol,
               });
 
               // If the execution is still running, we set the data state

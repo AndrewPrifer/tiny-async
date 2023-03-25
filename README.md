@@ -49,7 +49,15 @@ function App() {
       <button
         onClick={() => {
           // Opt out of the cache just for this run
-          run.withOpts({ ignoreCache: true })("Bob");
+          run
+            .withOpts({ ignoreCache: true })("Bob")
+            // The run function also returns a promise that resolves to the data
+            // It also tells you if it is the result of the latest run, so you can avoid race conditions
+            .then(({ data, latest }) => {
+              if (latest) {
+                console.log(data);
+              }
+            });
         }}
       >
         Say hi to Bob
