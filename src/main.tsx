@@ -34,6 +34,43 @@ const useAbortableHelloQuery = createHook(
   { abortable: true }
 );
 
+function useWindowFocus() {
+  const [focused, setFocus] = useState(true);
+  const handleFocus = () => setFocus(true);
+  const handleBlur = () => setFocus(false);
+
+  useEffect(() => {
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+    };
+  });
+
+  return focused;
+}
+
+function useIsOnline() {
+  let [isOnline, setIsOnline] = useState(window.navigator.onLine);
+
+  useEffect(() => {
+    function handler() {
+      setIsOnline(window.navigator.onLine);
+    }
+
+    window.addEventListener("online", handler);
+    window.addEventListener("offline", handler);
+
+    return () => {
+      window.removeEventListener("online", handler);
+      window.removeEventListener("offline", handler);
+    };
+  }, []);
+
+  return isOnline;
+}
+
 const useTinySWRQuery = createHook(
   (key: string, fetcher: () => Promise<any>) => {
     return fetcher();
@@ -46,9 +83,15 @@ const useTinySWR = <T,>(
   {
     fallbackData,
     keepPreviousData = false,
+    revalidateIfStale = true,
+    revalidateOnFocus = true,
+    revalidateOnReconnect = true,
   }: {
     fallbackData?: T;
     keepPreviousData?: boolean;
+    revalidateIfStale?: boolean;
+    revalidateOnFocus?: boolean;
+    revalidateOnReconnect?: boolean;
   } = {}
 ) => {
   const { data, error, isPending, run } = useTinySWRQuery({
@@ -64,30 +107,47 @@ const useTinySWR = <T,>(
   }, [fetcher]);
 
   useEffect(() => {
-    run(key, fetcherRef.current);
+    run.withOpts({ ignoreCache: revalidateIfStale })(key, fetcherRef.current);
   }, [key]);
+
+  const windowFocus = useWindowFocus();
+
+  const revalidate = () => {
+    setIsRevalidating(true);
+    run
+      .withOpts({ ignoreCache: true, keepPreviousData: true })(
+        key,
+        fetcherRef.current
+      )
+      .finally(() => {
+        setIsRevalidating(false);
+      });
+  };
+
+  useEffect(() => {
+    if (revalidateOnFocus && windowFocus) {
+      revalidate();
+    }
+  }, [revalidateOnFocus, windowFocus]);
+
+  const isOnline = useIsOnline();
+
+  useEffect(() => {
+    if (revalidateOnReconnect && isOnline) {
+      revalidate();
+    }
+  }, [revalidateOnReconnect, isOnline]);
 
   return {
     data: data ?? fallbackData,
     error,
     isLoading: isPending && !isReValidating,
     isValidating: isPending || isReValidating,
-    revalidate: () => {
-      setIsRevalidating(true);
-      run
-        .withOpts({ ignoreCache: true, keepPreviousData: true })(
-          key,
-          fetcherRef.current
-        )
-        .finally(() => {
-          setIsRevalidating(false);
-        });
-    },
   };
 };
 
 function MyComponent({ name }: { name: string }) {
-  const { data, error, isLoading, isValidating, revalidate } = useTinySWR(
+  const { data, error, isLoading, isValidating } = useTinySWR(
     name,
     () => {
       return new Promise((resolve) => {
@@ -105,7 +165,6 @@ function MyComponent({ name }: { name: string }) {
       <p>{error && error.message}</p>
       <p>{isLoading && "loading"}</p>
       <p>{isValidating && "validating"}</p>
-      <button onClick={() => revalidate()}>Revalidate</button>
     </div>
   );
 }

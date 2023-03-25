@@ -67,7 +67,81 @@ function App() {
 
 ## Examples
 
-🚧 Under construction
+Tiny Async is very flexible and can be used to create bespoke hooks for a variety of use cases.
+
+Here is a tiny, useSWR-like hook built using Tiny Async in 70 lines of code:
+
+```tsx
+// We let Tiny Async handle caching and state management for the useTinySWR hook by creating a helper hook
+const useSWRHelper = createHook((key: string, fetcher: () => Promise<any>) => {
+  return fetcher();
+});
+
+// We wrap the helper hook in a custom hook to provide the high-level useSWR API
+export const useTinySWR = <T,>(
+  key: string,
+  fetcher: () => Promise<T>,
+  {
+    fallbackData,
+    keepPreviousData = false,
+    revalidateIfStale = true,
+    revalidateOnFocus = true,
+    revalidateOnReconnect = true,
+  }: {
+    fallbackData?: T;
+    keepPreviousData?: boolean;
+    revalidateIfStale?: boolean;
+    revalidateOnFocus?: boolean;
+    revalidateOnReconnect?: boolean;
+  } = {}
+) => {
+  const { data, error, isPending, run } = useSWRHelper({
+    keepPreviousData,
+  });
+
+  const fetcherRef = useRef(fetcher);
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+  useEffect(() => {
+    run.withOpts({ ignoreCache: revalidateIfStale })(key, fetcherRef.current);
+  }, [key]);
+
+  const [isReValidating, setIsRevalidating] = useState(false);
+  const revalidate = () => {
+    setIsRevalidating(true);
+    run
+      .withOpts({ ignoreCache: true, keepPreviousData: true })(
+        key,
+        fetcherRef.current
+      )
+      .finally(() => {
+        setIsRevalidating(false);
+      });
+  };
+
+  const windowFocus = useWindowFocus();
+  useEffect(() => {
+    if (revalidateOnFocus && windowFocus) {
+      revalidate();
+    }
+  }, [revalidateOnFocus, windowFocus]);
+
+  const isOnline = useIsOnline();
+  useEffect(() => {
+    if (revalidateOnReconnect && isOnline) {
+      revalidate();
+    }
+  }, [revalidateOnReconnect, isOnline]);
+
+  return {
+    data: data ?? fallbackData,
+    error,
+    isLoading: isPending && !isReValidating,
+    isValidating: isPending || isReValidating,
+  };
+};
+```
 
 ## Acknowledgements
 
@@ -75,3 +149,4 @@ function App() {
 - [@slorber/react-async-hook](https://github.com/slorber/react-async-hook)
 - [@dai-shi/react-hooks-async](https://github.com/dai-shi/react-hooks-async)
 - [@marcin-piela/react-fetching-library](https://github.com/marcin-piela/react-fetching-library)
+- [@vercel/swr](https://github.com/vercel/swr)
