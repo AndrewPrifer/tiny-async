@@ -1,4 +1,4 @@
-import pMemoize, { Options, AnyAsyncFunction } from "./pMemoize";
+import pMemoize, { Options, AnyAsyncFunction, RunParams } from "./pMemoize";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
 import { PopTuple } from "./typeUtils";
@@ -6,14 +6,12 @@ import { PopTuple } from "./typeUtils";
 export const createHook = <
   Fn extends AnyAsyncFunction,
   CacheKeyType,
-  Abortable extends boolean
+  Abortable extends boolean = false
 >(
   fn: Fn,
   options?: Options<Fn, CacheKeyType, Abortable>
 ) => {
-  type RunParams = Abortable extends true
-    ? PopTuple<Parameters<Fn>>
-    : Parameters<Fn>;
+  type MyRunParams = RunParams<Abortable, Fn>;
 
   const cache = options?.cache ?? new Map();
   const promiseCache = new Map<
@@ -98,7 +96,7 @@ export const createHook = <
      */
     const createRunFn = useEventCallback(
       (runOptions?: RunConfig) =>
-        (...args: RunParams) => {
+        (...args: MyRunParams) => {
           const defaultOptions: Required<RunConfig> = {
             cancelOnUnmount: false,
             keepPreviousData: false,
@@ -235,7 +233,7 @@ export const createHook = <
         }
     );
 
-    const run = (...args: RunParams) => createRunFn()(...args);
+    const run = (...args: MyRunParams) => createRunFn()(...args);
     run.withOpts = createRunFn;
 
     return {

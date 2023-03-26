@@ -1,5 +1,12 @@
 import { PopTuple } from "./typeUtils";
 
+export type RunParams<
+  Abortable extends boolean,
+  Fn extends (...args: any[]) => any
+> = Abortable extends true
+  ? PopTuple<Required<Parameters<Fn>>>
+  : Parameters<Fn>;
+
 type AsyncFunction = (...arguments_: any[]) => Promise<unknown>;
 type AsyncReturnType<Target extends AsyncFunction> = Awaited<
   ReturnType<Target>
@@ -40,11 +47,7 @@ export type Options<
 	@default arguments_ => arguments_[0]
 	@example arguments_ => JSON.stringify(arguments_)
 	*/
-  readonly cacheKey?: (
-    arguments_: Abortable extends true
-      ? PopTuple<Parameters<Fn>>
-      : Parameters<Fn>
-  ) => CacheKeyType;
+  readonly cacheKey?: (arguments_: RunParams<Abortable, Fn>) => CacheKeyType;
 
   /**
 	Use a different cache storage. Must implement the following methods: `.has(key)`, `.get(key)`, `.set(key, value)`, `.delete(key)`, and optionally `.clear()`. You could for example use a `WeakMap` instead or [`quick-lru`](https://github.com/sindresorhus/quick-lru) for a LRU cache. To disable caching so that only concurrent executions resolve with the same value, pass `false`.
@@ -61,11 +64,9 @@ export type Options<
 export default function pMemoize<
   Fn extends AnyAsyncFunction,
   CacheKeyType,
-  Abortable extends boolean
->(fn: Fn, options: Options<Fn, CacheKeyType, Abortable> = {}): Fn {
-  type CacheParams = Abortable extends true
-    ? PopTuple<Parameters<Fn>>
-    : Parameters<Fn>;
+  Abortable extends boolean = false
+>(fn: Fn, options: Options<Fn, CacheKeyType, Abortable>): Fn {
+  type CacheParams = RunParams<Abortable, Fn>;
 
   const cache = options?.cache ?? new Map();
   const cacheKey =
