@@ -1,7 +1,6 @@
 import pMemoize, { Options, AnyAsyncFunction, RunParams } from "./pMemoize";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
-import { PopTuple } from "./typeUtils";
 
 export const createHook = <
   Fn extends AnyAsyncFunction,
