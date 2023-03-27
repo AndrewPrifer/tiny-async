@@ -236,8 +236,9 @@ Tiny Async is very flexible and can be used to create bespoke hooks for a variet
 Get React state management and memoization for your tRPC procedures with no cost. The created hook will inherit all of the type safety of the procedure, including the type of `data` and the parameters of `run()`.
 
 ```ts
-const useMyProcedure = createHook<typeof trpc.myProcedure.mutate>(
-  (...args) => trpc.processCommand.mutate(...args),
+const useMyProcedure = createHook(
+  (...args: Parameters<typeof trpc.myProcedure.mutate>) =>
+    trpc.myProcedure.mutate(...args),
   {
     // Tiny Async supports aborting tRPC procedures out of the box
     abortable: true,
