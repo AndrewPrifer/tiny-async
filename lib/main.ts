@@ -2,6 +2,8 @@ import pMemoize, { Options, AnyAsyncFunction, RunParams } from "./pMemoize";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
 
+// TODO: Allow passing base run options to createHook (overwritten by hook options, which are overwritten by run options)
+
 /**
  * Create a React hook managing the lifecycle of an async function.
  *
