@@ -116,15 +116,6 @@ React hook managing the lifecycle of the async function passed to `createHook`.
 - `keepPreviousData?: boolean`: Whether to keep the previous data when the hook is re-run. Default is `false`.
 - `ignoreCache?: boolean`: Whether to ignore the cache and re-run the function. Default is `false`.
 
-**Example**
-
-```ts
-const { data, error, isPending, run } = useFetchData({
-  cancelOnUnmount: true,
-  keepPreviousData: true,
-});
-```
-
 **Returns**
 
 The created hook returns an object with the following properties:
@@ -141,17 +132,10 @@ The created hook returns an object with the following properties:
 **Example**
 
 ```ts
-const { data, error, isPending, run } = useFetchData();
-
-if (isPending) {
-  return <div>Loading...</div>;
-}
-
-if (error) {
-  return <div>Error: {error.message}</div>;
-}
-
-return <div>Data: {JSON.stringify(data)}</div>;
+const { data, error, isPending, run } = useFetchData({
+  cancelOnUnmount: true,
+  keepPreviousData: true,
+});
 ```
 
 ### `run(...args)`
