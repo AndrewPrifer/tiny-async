@@ -88,7 +88,6 @@ Creates a React hook managing the lifecycle of the given async function.
 - `cacheKey` (Optional): A function that determines the cache key for storing the result based on the function arguments. Default: `(arguments_) => arguments_[0]`.
 - `cache` (Optional): Use a different cache storage. Default: `new Map()`.
 - `abortable` (Optional): A boolean indicating whether the function is abortable. Default: `false`.
-- `promiseCache` (Optional): A Map to store the promises for the memoized function. By default, a Map is used.
 
 **Returns**
 

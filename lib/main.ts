@@ -22,7 +22,7 @@ export const createHook = <
   Abortable extends boolean = false
 >(
   fn: Fn,
-  options?: Options<Fn, CacheKeyType, Abortable>
+  options?: Omit<Options<Fn, CacheKeyType, Abortable>, "promiseCache">
 ) => {
   type MyRunParams = RunParams<Abortable, Fn>;
 
