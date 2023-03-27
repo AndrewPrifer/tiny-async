@@ -202,6 +202,7 @@ A function that takes the arguments to pass to the async function and returns a 
 
 - `data: Data`: The data that was returned by the async function.
 - `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
+- `cached: boolean`: Whether the response was retrieved from the cache.
 
 **Example**
 
@@ -210,7 +211,7 @@ const { run } = useFetchData();
 
 run
   .withOpts({ ignoreCache: true })(arg1, arg2)
-  .then(({ data, latest }) => {
+  .then(({ data, latest, cached }) => {
     if (latest) {
       console.log("Fetched latest data:", data);
     }
