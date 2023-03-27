@@ -18,10 +18,35 @@ export type AnyAsyncFunction = (
 ) => Promise<unknown | void>;
 
 export type CacheStorage<KeyType, ValueType> = {
+  /**
+   * Returns a boolean asserting whether an element is present with the given key in the storage or not.
+   *
+   * @param key The key of the element to add to the Map object.
+   */
   has: (key: KeyType) => Promise<boolean> | boolean;
+  /**
+   * Returns the element associated to the given key, or undefined if there is none.
+   *
+   * @param key The key of the element to return from the storage.
+   * @returns The element associated with the specified key or undefined if the key can't be found in the storage.
+   */
   get: (key: KeyType) => Promise<ValueType | undefined> | ValueType | undefined;
+  /**
+   * Sets the value for the key in the storage.
+   *
+   * @param key The key of the element to add to the storage.
+   * @param value The value of the element to add to the storage.
+   */
   set: (key: KeyType, value: ValueType) => Promise<unknown> | unknown;
+  /**
+   * Removes any value associated to the key.
+   *
+   * @param key The key of the element to remove from the storage.
+   */
   delete: (key: KeyType) => unknown;
+  /**
+   * Removes all key/value pairs from the storage.
+   */
   clear?: () => unknown;
 };
 
@@ -35,14 +60,12 @@ export type Options<
 	A `cacheKey` function can return any type supported by `Map` (or whatever structure you use in the `cache` option).
 	You can have it cache **all** the arguments by value with `JSON.stringify`, if they are compatible:
 	```
-	import pMemoize from 'p-memoize';
-	pMemoize(function_, {cacheKey: JSON.stringify});
+	{cacheKey: JSON.stringify}
 	```
 	Or you can use a more full-featured serializer like [serialize-javascript](https://github.com/yahoo/serialize-javascript) to add support for `RegExp`, `Date` and so on.
 	```
-	import pMemoize from 'p-memoize';
 	import serializeJavascript from 'serialize-javascript';
-	pMemoize(function_, {cacheKey: serializeJavascript});
+	{cacheKey: serializeJavascript}
 	```
 	@default arguments_ => arguments_[0]
 	@example arguments_ => JSON.stringify(arguments_)
@@ -56,8 +79,14 @@ export type Options<
 	*/
   readonly cache?: CacheStorage<CacheKeyType, AsyncReturnType<Fn>> | false;
 
+  /**
+   * Whether the function is abortable. If it is, the last argument will be treated as an AbortSignal.
+   */
   readonly abortable?: Abortable;
 
+  /**
+   * A `Map` to store the promises for the memoized function. By default, a `Map` is used. This is useful if you want to share the cache across multiple instances of the memoized function.
+   */
   readonly promiseCache?: Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>;
 };
 

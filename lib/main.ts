@@ -2,9 +2,16 @@ import pMemoize, { Options, AnyAsyncFunction, RunParams } from "./pMemoize";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
 
+/**
+ * Create a React hook managing the lifecycle of an async function.
+ *
+ * @param fn The async function to manage the lifecycle of
+ * @param options Options for the hook
+ * @returns A React hook managing the lifecycle of the async function
+ */
 export const createHook = <
   Fn extends AnyAsyncFunction,
-  CacheKeyType,
+  CacheKeyType = string,
   Abortable extends boolean = false
 >(
   fn: Fn,
@@ -29,12 +36,25 @@ export const createHook = <
   });
 
   type RunConfig = {
+    /**
+     * Whether to cancel the execution when the hook is unmounted.
+     */
     cancelOnUnmount?: boolean;
+    /**
+     * Whether to keep the previous data when the hook is re-run.
+     */
     keepPreviousData?: boolean;
+    /**
+     * Whether to ignore the cache and re-run the function.
+     */
     ignoreCache?: boolean;
   };
 
-  // Return a React hook managing the lifecycle of the memoized async function
+  /**
+   * The hook managing the lifecycle of the async function.
+   *
+   * @param hookOptions Options for the hook
+   */
   return (hookOptions?: RunConfig) => {
     // State containing the status of the async function
     const [data, setData] = useState<Awaited<ReturnType<Fn>> | undefined>();
@@ -70,9 +90,6 @@ export const createHook = <
       runOptions: RunConfig;
     } | null>(null);
 
-    /**
-     * Cancel the current execution.
-     */
     const cancel = useCallback(() => {
       if (!runningRef.current) return;
       runningRef.current.abortController.abort();
@@ -90,9 +107,6 @@ export const createHook = <
       };
     }, [cancel]);
 
-    /**
-     * Run the async function.
-     */
     const createRunFn = useEventCallback(
       (runOptions?: RunConfig) =>
         (...args: MyRunParams) => {
@@ -121,7 +135,13 @@ export const createHook = <
           const executionSymbol = Symbol();
           const abortController = new AbortController();
           const userPromise = makeControlledPromise<{
+            /**
+             * The data that was returned by the async function.
+             */
             data: Awaited<ReturnType<Fn>>;
+            /**
+             * Whether the execution is the latest one. Useful for avoiding race conditions.
+             */
             latest: boolean;
           }>();
 
@@ -233,18 +253,54 @@ export const createHook = <
     );
 
     const run = (...args: MyRunParams) => createRunFn()(...args);
+
+    /**
+     * Override the options given to the hook.
+     */
     run.withOpts = createRunFn;
 
     return {
+      /**
+       * The data returned by the async function.
+       */
       data,
+      /**
+       * The error thrown by the async function.
+       */
       error,
+      /**
+       * Whether the async function is currently running.
+       */
       isPending,
+      /**
+       * Whether the async function has been run at least once.
+       */
       isInitial,
+      /**
+       * Whether the async function has resolved.
+       */
       isResolved,
+      /**
+       * Whether the async function has rejected.
+       */
       isRejected,
+      /**
+       * Whether the async function has settled (either resolved or rejected).
+       */
       isSettled,
+      /**
+       * The current status of the async function. Can be one of "pending", "initial", "resolved", "rejected".
+       */
       status,
+      /**
+       * Run the async function.
+       *
+       * @param args Same arguments as those of the async function
+       */
       run,
+      /**
+       * Cancel the current execution.
+       */
       cancel,
     } as const;
   };

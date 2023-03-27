@@ -3,6 +3,8 @@
 Tiny, flexible and ergonomic and async data fetching & RPC library for React with memoization support.
 Tiny Async helps you easily create bespoke React hooks that automatically memoize async functions and manage promise state.
 
+## Features
+
 - Manages `data`, `error`, `isPending`, `isResolved`, `isRejected` state
 - Gracefully handles race conditions and stale data
 - Provides `run` and `cancel` methods, giving you full control over when async functions run
@@ -35,7 +37,6 @@ const useHelloAsync = createHook((name: string): Promise<string> => {
 });
 
 function App() {
-  // Data will be automatically cached
   const { data, isPending, run } = useHelloAsync({ keepPreviousData: true });
 
   return (
@@ -83,22 +84,183 @@ You can easily create data fetching hooks tailored to your specific use case.
 
 ## API
 
-🚧 Under construction
+### `createHook(fn, options?)`
 
-## Examples
+Creates a React hook managing the lifecycle of the given async function.
+
+**Parameters**
+
+- `fn`: The async function to manage the lifecycle of.
+- `options`: Optional configuration options for the hook.
+
+**Options**
+
+- `cacheKey` (Optional): A function that determines the cache key for storing the result based on the function arguments. Default: `(arguments_) => arguments_[0]`.
+- `cache` (Optional): Use a different cache storage. Default: `new Map()`.
+- `abortable` (Optional): A boolean indicating whether the function is abortable. Default: `false`.
+- `promiseCache` (Optional): A Map to store the promises for the memoized function. By default, a Map is used.
+
+**Returns**
+
+A React hook managing the lifecycle of the async function.
+
+**Example**
+
+```ts
+const useFetchData = createHook(fetchData, {
+  cacheKey: JSON.stringify,
+  abortable: true,
+});
+```
+
+### Hook returned by `createHook`
+
+React hook managing the lifecycle of the async function passed to `createHook`.
+
+**Parameters**
+
+- `options`: Optional configuration options for the hook.
+
+**Options**
+
+- `cancelOnUnmount?: boolean`: Whether to cancel the execution when the hook is unmounted. Default is `false`.
+- `keepPreviousData?: boolean`: Whether to keep the previous data when the hook is re-run. Default is `false`.
+- `ignoreCache?: boolean`: Whether to ignore the cache and re-run the function. Default is `false`.
+
+**Example**
+
+```ts
+const { data, error, isPending, run } = useFetchData({
+  cancelOnUnmount: true,
+  keepPreviousData: true,
+});
+```
+
+**Returns**
+
+The created hook returns an object with the following properties:
+
+- `data: any | undefined`: The data returned by the async function.
+- `error: Error | undefined`: The error thrown by the async function.
+- `isPending: boolean`: Whether the async function is currently running.
+- `isInitial: boolean`: Whether the async function has been run at least once.
+- `isResolved: boolean`: Whether the async function has resolved.
+- `isRejected: boolean`: Whether the async function has rejected.
+- `isSettled: boolean`: Whether the async function has settled (either resolved or rejected).
+- `status: "initial" | "pending" | "rejected" | "resolved"`: The current status of the async function.
+
+**Example**
+
+```ts
+const { data, error, isPending, run } = useFetchData();
+
+if (isPending) {
+  return <div>Loading...</div>;
+}
+
+if (error) {
+  return <div>Error: {error.message}</div>;
+}
+
+return <div>Data: {JSON.stringify(data)}</div>;
+```
+
+### `run(...args)`
+
+A function that runs the async function with the given arguments.
+
+**Parameters**
+
+- `...args: RunParams<Abortable, Fn>`: The arguments to pass to the async function.
+
+**Returns**
+
+A promise that resolves with an object containing:
+
+- `data: Awaited<ReturnType<Fn>>`: The data that was returned by the async function.
+- `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
+
+**Example**
+
+```ts
+const { run } = useFetchData();
+
+run(arg1, arg2).then(({ data, latest }) => {
+  if (latest) {
+    console.log("Fetched latest data:", data);
+  }
+});
+```
+
+### `run.withOpts(options?)`
+
+A function that allows you to override the options given to the hook when running the async function.
+
+**Parameters**
+
+- `options`: Optional configuration options for the `run` function.
+
+**Options**
+
+- `cancelOnUnmount?: boolean`: Whether to cancel the execution when the hook is unmounted. Default is `false`.
+- `keepPreviousData?: boolean`: Whether to keep the previous data when the hook is re-run. Default is `false`.
+- `ignoreCache?: boolean`: Whether to ignore the cache and re-run the function. Default is `false`.
+
+**Returns**
+
+A function that takes the arguments to pass to the async function and returns a promise that resolves with an object containing:
+
+- `data: any`: The data that was returned by the async function.
+- `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
+
+**Example**
+
+```ts
+const { run } = useFetchData();
+
+run
+  .withOpts({ ignoreCache: true })(arg1, arg2)
+  .then(({ data, latest }) => {
+    if (latest) {
+      console.log("Fetched latest data:", data);
+    }
+  });
+```
+
+## Use cases
 
 Tiny Async is very flexible and can be used to create bespoke hooks for a variety of use cases.
 
+### Wrap your tRPC procedures
+
+Get React state management and memoization for your tRPC procedures with no cost. The created hook will inherit all of the type safety of the procedure, including the type of `data` and the parameters of `run()`.
+
+```ts
+const useMyProcedure = createHook<typeof trpc.myProcedure.mutate>(
+  (...args) => trpc.processCommand.mutate(...args),
+  {
+    // Tiny Async supports aborting tRPC procedures out of the box
+    abortable: true,
+    cacheKey: (args) => JSON.stringify(args),
+  }
+);
+
+// data and run are typed correctly
+const { data, run } = useMyProcedure();
+```
+
+### Roll your own useSWR
+
 Here is a tiny, useSWR-like hook built using Tiny Async in 70 lines of code:
 
-```tsx
+```ts
 // Let Tiny Async handle caching and state management by creating a helper hook
 const useSWRHelper = createHook((key: string, fetcher: () => Promise<any>) => {
   return fetcher();
 });
 
 // We wrap the helper hook in a custom hook to provide the high-level useSWR API
-export const useTinySWR = <T,>(
+export const useTinySWR = <T>(
   key: string,
   fetcher: () => Promise<T>,
   {
