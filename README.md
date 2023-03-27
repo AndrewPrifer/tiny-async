@@ -27,45 +27,34 @@ yarn add tiny-async
 ```tsx
 import { createHook } from "tiny-async";
 
-// By default, Tiny Async will memoize your async function and cache the result based on the first parameter
-const useHelloAsync = createHook((name: string): Promise<string> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(`Hello ${name}`);
-    }, 2000);
-  });
-});
+const fetchUser = async (id: number) => {
+  const response = await fetch(`https://api.example.com/users/${id}`);
+  return response.json();
+};
 
-function App() {
-  const { data, isPending, run } = useHelloAsync({ keepPreviousData: true });
+// fetchUser is automatically memoized (you can opt out of this behavior)
+const useFetchUser = createHook(fetchUser);
+
+function UserProfile({ userId }) {
+  const { data, error, isPending, run } = useFetchUser({
+    keepPreviousData: true,
+  });
+
+  useEffect(() => {
+    // Call run anytime you want to fetch the user
+    run.withOpts({ ignoreCache: true })(userId);
+
+    // You can also call run directly to use the default options
+    // run(userId);
+  }, [userId]);
+
+  if (isPending) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <button
-        onClick={() => {
-          run("Andrew");
-        }}
-      >
-        Say hi to Andrew
-      </button>
-      <button
-        onClick={() => {
-          // Opt out of the cache just for this run
-          run
-            .withOpts({ ignoreCache: true })("Bob")
-            // The run function also returns a promise that resolves to the data
-            // It also tells you if it is the latest run, so you can avoid race conditions
-            .then(({ data, latest }) => {
-              if (latest) {
-                console.log(data);
-              }
-            });
-        }}
-      >
-        Say hi to Bob
-      </button>
-      {isPending && <div>Loading...</div>}
-      {data && <div>{data}</div>}
+      <h1>{data.name}</h1>
+      <p>{data.email}</p>
     </div>
   );
 }

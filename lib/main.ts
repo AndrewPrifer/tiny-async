@@ -57,6 +57,7 @@ export const createHook = <
    */
   return (hookOptions?: RunConfig) => {
     // State containing the status of the async function
+    // TODO: intialize with the value of the cache
     const [data, setData] = useState<Awaited<ReturnType<Fn>> | undefined>();
     const [error, setError] = useState<Error | undefined>();
     const [isPending, setIsPending] = useState(false);
