@@ -140,7 +140,7 @@ const { data, error, isPending, run } = useFetchData({
 
 The created hook returns an object with the following properties:
 
-- `data: any | undefined`: The data returned by the async function.
+- `data: Data | undefined`: The data returned by the async function.
 - `error: Error | undefined`: The error thrown by the async function.
 - `isPending: boolean`: Whether the async function is currently running.
 - `isInitial: boolean`: Whether the async function has been run at least once.
@@ -171,13 +171,13 @@ A function that runs the async function with the given arguments.
 
 **Parameters**
 
-- `...args: RunParams<Abortable, Fn>`: The arguments to pass to the async function.
+- `...args: Args`: The arguments to pass to the async function.
 
 **Returns**
 
 A promise that resolves with an object containing:
 
-- `data: Awaited<ReturnType<Fn>>`: The data that was returned by the async function.
+- `data: Data`: The data that was returned by the async function.
 - `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
 
 **Example**
@@ -210,7 +210,7 @@ A function that allows you to override the options given to the hook when runnin
 
 A function that takes the arguments to pass to the async function and returns a promise that resolves with an object containing:
 
-- `data: any`: The data that was returned by the async function.
+- `data: Data`: The data that was returned by the async function.
 - `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
 
 **Example**
