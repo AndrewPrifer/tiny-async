@@ -14,6 +14,7 @@ Tiny Async helps you easily create bespoke React hooks that automatically memoiz
 - Options to customize state updates on a per-hook, or per-run basis
 - Full TypeScript support
 - Less than 1.3kb minified and gzipped
+- Platform agnostic
 - Zero dependencies
 
 ## Installation
@@ -36,9 +37,7 @@ const fetchUser = async (id: number) => {
 const useFetchUser = createHook(fetchUser);
 
 function UserProfile({ userId }) {
-  const { data, error, isPending, run } = useFetchUser({
-    keepPreviousData: true,
-  });
+  const { data, error, isPending, run } = useFetchUser();
 
   useEffect(() => {
     // Call run anytime you want to fetch the user
@@ -48,9 +47,6 @@ function UserProfile({ userId }) {
         run.withOpts({ ignoreCache: true, keepPreviousData: true })(userId);
       }
     });
-
-    // You can also call run directly to use the default options
-    // run(userId);
   }, [userId]);
 
   if (isPending) return <div>Loading...</div>;
