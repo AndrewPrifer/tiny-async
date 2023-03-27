@@ -168,13 +168,14 @@ A promise that resolves with an object containing:
 
 - `data: Data`: The data that was returned by the async function.
 - `latest: boolean`: Whether the execution is the latest one. Useful for avoiding race conditions.
+- `cached: boolean`: Whether the response was retrieved from the cache.
 
 **Example**
 
 ```ts
 const { run } = useFetchData();
 
-run(arg1, arg2).then(({ data, latest }) => {
+run(arg1, arg2).then(({ data, latest, cached }) => {
   if (latest) {
     console.log("Fetched latest data:", data);
   }
