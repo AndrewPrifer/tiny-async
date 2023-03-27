@@ -19,7 +19,7 @@
   "repository": "AndrewPrifer/tiny-async",
   "bugs": "https://github.com/AndrewPrifer/tiny-async/issues",
   "homepage": "https://github.com/AndrewPrifer/tiny-async",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "files": [
     "dist"
