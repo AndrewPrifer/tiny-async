@@ -23,7 +23,7 @@ Tiny Async helps you easily create bespoke React hooks that automatically memoiz
 yarn add tiny-async
 ```
 
-## Quick Start
+## Quick start
 
 ```tsx
 import { createHook } from "tiny-async";
