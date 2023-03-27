@@ -50,6 +50,8 @@ export type CacheStorage<KeyType, ValueType> = {
   clear?: () => unknown;
 };
 
+export type PromiseWithIsCached<T> = Promise<{ data: T; cached: boolean }>;
+
 export type Options<
   Fn extends AnyAsyncFunction,
   CacheKeyType,
@@ -87,17 +89,20 @@ export type Options<
   /**
    * A `Map` to store the promises for the memoized function. By default, a `Map` is used. This is useful if you want to share the cache across multiple instances of the memoized function.
    */
-  readonly promiseCache?: Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>;
+  readonly promiseCache?: Map<
+    CacheKeyType,
+    PromiseWithIsCached<AsyncReturnType<Fn>>
+  >;
 };
 
 export default function pMemoize<
   Fn extends AnyAsyncFunction,
   CacheKeyType,
   Abortable extends boolean = false
->(fn: Fn, options: Options<Fn, CacheKeyType, Abortable>): Fn {
+>(fn: Fn, options: Options<Fn, CacheKeyType, Abortable>) {
   type CacheParams = RunParams<Abortable, Fn>;
 
-  const cache = options?.cache ?? new Map();
+  const cache = options?.cache ?? new Map<CacheKeyType, AsyncReturnType<Fn>>();
   const cacheKey =
     options?.cacheKey ?? (([firstArgument]) => firstArgument as CacheKeyType);
   const abortable = options?.abortable ?? false;
@@ -106,49 +111,56 @@ export default function pMemoize<
   // `Promise<AsyncReturnType<FunctionToMemoize>>` is used instead of `ReturnType<FunctionToMemoize>` because promise properties are not kept
   const promiseCache =
     options?.promiseCache ??
-    new Map<CacheKeyType, Promise<AsyncReturnType<Fn>>>();
+    new Map<CacheKeyType, PromiseWithIsCached<AsyncReturnType<Fn>>>();
 
-  const memoized = function (
-    this: any,
-    ...arguments_: Parameters<Fn>
-  ): Promise<AsyncReturnType<Fn>> {
-    // If async function is abortable, we don't use the last parameter for the cache key, because it's the abort signal
-    const key = abortable
-      ? cacheKey(arguments_.slice(0, -1) as CacheParams)
-      : cacheKey(arguments_ as CacheParams);
+  const createMemoizedRun = ({
+    ignoreCache = false,
+  }: { ignoreCache?: boolean } = {}) =>
+    function (
+      this: any,
+      ...arguments_: Parameters<Fn>
+    ): PromiseWithIsCached<AsyncReturnType<Fn>> {
+      // If async function is abortable, we don't use the last parameter for the cache key, because it's the abort signal
+      const key = abortable
+        ? cacheKey(arguments_.slice(0, -1) as CacheParams)
+        : cacheKey(arguments_ as CacheParams);
 
-    if (promiseCache.has(key)) {
-      return promiseCache.get(key)!;
-    }
-
-    const promise = (async () => {
-      try {
-        if (cache && (await cache.has(key))) {
-          return (await cache.get(key))!;
-        }
-
-        const promise = fn.apply(this, arguments_) as Promise<
-          AsyncReturnType<Fn>
-        >;
-
-        const result = await promise;
-
-        try {
-          return result;
-        } finally {
-          if (cache) {
-            await cache.set(key, result);
-          }
-        }
-      } finally {
-        promiseCache.delete(key);
+      if (promiseCache.has(key) && !ignoreCache) {
+        return promiseCache.get(key)!;
       }
-    })() as Promise<AsyncReturnType<Fn>>;
 
-    promiseCache.set(key, promise);
+      const promise = (async (): PromiseWithIsCached<AsyncReturnType<Fn>> => {
+        try {
+          if (cache && (await cache.has(key)) && !ignoreCache) {
+            return { data: (await cache.get(key))!, cached: true };
+          }
 
-    return promise;
-  } as Fn;
+          const promise = fn.apply(this, arguments_) as Promise<
+            AsyncReturnType<Fn>
+          >;
+
+          const result = await promise;
+
+          try {
+            return { data: result, cached: false };
+          } finally {
+            if (cache) {
+              await cache.set(key, result);
+            }
+          }
+        } finally {
+          promiseCache.delete(key);
+        }
+      })();
+
+      promiseCache.set(key, promise);
+
+      return promise;
+    };
+
+  const memoized = (...args: Parameters<Fn>) =>
+    createMemoizedRun({ ignoreCache: false })(...args);
+  memoized.withOpts = createMemoizedRun;
 
   return memoized;
 }

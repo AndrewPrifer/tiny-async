@@ -42,7 +42,12 @@ function UserProfile({ userId }) {
 
   useEffect(() => {
     // Call run anytime you want to fetch the user
-    run.withOpts({ ignoreCache: true })(userId);
+    run(userId).then(({ cached }) => {
+      if (cached) {
+        // If the first run's response was cached, revalidate while displaying the cached data
+        run.withOpts({ ignoreCache: true, keepPreviousData: true })(userId);
+      }
+    });
 
     // You can also call run directly to use the default options
     // run(userId);
@@ -271,15 +276,8 @@ export const useTinySWR = <T>(
     keepPreviousData,
   });
 
-  const fetcherRef = useRef(fetcher);
-  useEffect(() => {
-    fetcherRef.current = fetcher;
-  }, [fetcher]);
-  useEffect(() => {
-    run.withOpts({ ignoreCache: revalidateIfStale })(key, fetcherRef.current);
-  }, [key]);
-
   const [isReValidating, setIsRevalidating] = useState(false);
+
   const revalidate = () => {
     setIsRevalidating(true);
     run
@@ -291,6 +289,20 @@ export const useTinySWR = <T>(
         setIsRevalidating(false);
       });
   };
+
+  const fetcherRef = useRef(fetcher);
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  useEffect(() => {
+    run(key, fetcherRef.current).then(({ cached }) => {
+      if (cached && revalidateIfStale) {
+        revalidate();
+      }
+    });
+  }, [key]);
 
   const windowFocus = useWindowFocus();
   useEffect(() => {

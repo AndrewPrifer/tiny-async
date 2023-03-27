@@ -1,4 +1,9 @@
-import pMemoize, { Options, AnyAsyncFunction, RunParams } from "./pMemoize";
+import pMemoize, {
+  Options,
+  AnyAsyncFunction,
+  RunParams,
+  PromiseWithIsCached,
+} from "./pMemoize";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { makeControlledPromise, useEventCallback } from "./utils";
 
@@ -24,7 +29,7 @@ export const createHook = <
   const cache = options?.cache ?? new Map();
   const promiseCache = new Map<
     CacheKeyType,
-    Promise<Awaited<ReturnType<Fn>>>
+    PromiseWithIsCached<Awaited<ReturnType<Fn>>>
   >();
   const cacheKey =
     options?.cacheKey ?? (([firstArgument]) => firstArgument as CacheKeyType);
@@ -59,7 +64,6 @@ export const createHook = <
    */
   return (hookOptions?: RunConfig) => {
     // State containing the status of the async function
-    // TODO: intialize with the value of the cache
     const [data, setData] = useState<Awaited<ReturnType<Fn>> | undefined>();
     const [error, setError] = useState<Error | undefined>();
     const [isPending, setIsPending] = useState(false);
@@ -136,15 +140,6 @@ export const createHook = <
 
           const hash = cacheKey(args);
 
-          // TODO: Add ability to pMemoize to actually ignore the cache. The below solution is not correct when the current execution errors or is canceled,
-          // because the cache will be left empty, and the next execution will be forced to run the function again.
-
-          // If ignoreCache is set, we remove the cached promise, if any
-          // NB ignoreCache doesn't mean that we won't store the result in the cache, it just means that we don't use the cached promise
-          if (cache && opts.ignoreCache) {
-            cache.delete(hash);
-          }
-
           const executionSymbol = Symbol();
           const abortController = new AbortController();
           const userPromise = makeControlledPromise<{
@@ -156,6 +151,10 @@ export const createHook = <
              * Whether the execution is the latest one. Useful for avoiding race conditions.
              */
             latest: boolean;
+            /**
+             * Whether the data was returned from the cache.
+             */
+            cached: boolean;
           }>();
           const startedAt = Date.now();
 
@@ -219,10 +218,17 @@ export const createHook = <
             setData(undefined);
           }
 
+          console.log("Running", hash);
+
           // If the async function supports aborting, we pass the AbortController's signal to it in addition to the arguments
           const promise = abortable
-            ? memoizedFn(...args, { signal: abortController.signal })
-            : memoizedFn(...args);
+            ? // @ts-ignore TypeScript is not smart enough for this yet
+              memoizedFn.withOpts({ ignoreCache: opts.ignoreCache })(...args, {
+                signal: abortController.signal,
+              })
+            : memoizedFn.withOpts({ ignoreCache: opts.ignoreCache })(
+                ...(args as Parameters<Fn>)
+              );
 
           promise
             .then((data) => {
@@ -230,7 +236,7 @@ export const createHook = <
               if (abortController.signal.aborted) return;
 
               userPromise.resolve({
-                data: data as Awaited<ReturnType<Fn>>,
+                ...data,
                 latest:
                   !lastResolvedRef.current ||
                   lastResolvedRef.current?.startedAt < startedAt,
@@ -242,16 +248,18 @@ export const createHook = <
               // Even though considering earlier calls doesn't in itself lead to data inconsistency, as long as we don't discard data from later executions as a result
               if (
                 !lastResolvedRef.current ||
-                lastResolvedRef.current?.startedAt < startedAt
+                // Checking <= instead of < mainly so that a pattern like this works:
+                // run(); run.withOpts({ ignoreCache: true }); // A cached run will be overwritten by the non-cached run started at the same time
+                lastResolvedRef.current?.startedAt <= startedAt
               ) {
                 lastResolvedRef.current = {
-                  data: data as Awaited<ReturnType<Fn>>,
+                  ...data,
                   startedAt,
                   symbol: executionSymbol,
                   hash,
                 };
 
-                setData(data as Awaited<ReturnType<Fn>>);
+                setData(data.data);
               }
 
               if (runningRef.current?.symbol === executionSymbol) {

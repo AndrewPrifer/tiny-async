@@ -27,7 +27,7 @@ const useAbortableHelloQuery = createHook(
         reject(new Error("Error"));
       }
       setTimeout(() => {
-        resolve(`I'm ${name}`);
+        resolve(`I'm ${name}${Math.random()}`);
       }, 2000);
     });
   },
@@ -100,18 +100,6 @@ const useTinySWR = <T,>(
 
   const [isReValidating, setIsRevalidating] = useState(false);
 
-  const fetcherRef = useRef(fetcher);
-
-  useEffect(() => {
-    fetcherRef.current = fetcher;
-  }, [fetcher]);
-
-  useEffect(() => {
-    run.withOpts({ ignoreCache: revalidateIfStale })(key, fetcherRef.current);
-  }, [key]);
-
-  const windowFocus = useWindowFocus();
-
   const revalidate = () => {
     setIsRevalidating(true);
     run
@@ -123,6 +111,22 @@ const useTinySWR = <T,>(
         setIsRevalidating(false);
       });
   };
+
+  const fetcherRef = useRef(fetcher);
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  useEffect(() => {
+    run(key, fetcherRef.current).then(({ cached }) => {
+      if (cached && revalidateIfStale) {
+        revalidate();
+      }
+    });
+  }, [key]);
+
+  const windowFocus = useWindowFocus();
 
   useEffect(() => {
     if (revalidateOnFocus && windowFocus) {
@@ -139,7 +143,7 @@ const useTinySWR = <T,>(
   }, [revalidateOnReconnect, isOnline]);
 
   return {
-    data: data ?? fallbackData,
+    data: (data as T) ?? fallbackData,
     error,
     isLoading: isPending && !isReValidating,
     isValidating: isPending || isReValidating,
@@ -149,7 +153,7 @@ const useTinySWR = <T,>(
 function MyComponent({ name }: { name: string }) {
   const { data, error, isLoading, isValidating } = useTinySWR(
     name,
-    () => {
+    (): Promise<string> => {
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve(`${name} ${Math.random()}`);
@@ -180,6 +184,7 @@ function App() {
       <button
         onClick={async () => {
           const res = await query.run("Andrew");
+          console.log(res);
         }}
       >
         Andrew
@@ -206,7 +211,7 @@ function App() {
       <button
         onClick={async () => {
           query.run("Sonia");
-          query.cancel();
+          // query.cancel();
           query.run.withOpts({ ignoreCache: true })("Sonia");
         }}
       >
