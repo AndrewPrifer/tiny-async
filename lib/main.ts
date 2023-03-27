@@ -78,20 +78,30 @@ export const createHook = <
 
     // Data related to the current execution
     const runningRef = useRef<{
+      // When the current execution started
+      startedAt: number;
       // A symbol uniquely identifying the current execution
       symbol: Symbol;
       // The cache key of the current execution. Used to identify equivalent executions
       hash: CacheKeyType;
       // The AbortController of the current execution
       abortController: AbortController;
-      // The promise returned to the user
-      userPromise: Promise<{
-        data: Awaited<ReturnType<Fn>>;
-        latest: boolean;
-      }>;
+
       // The options passed to the hook/run function
       runOptions: RunConfig;
     } | null>(null);
+
+    const lastResolvedRef = useRef<
+      | {
+          data: Awaited<ReturnType<Fn>>;
+          startedAt: number;
+          // A symbol uniquely identifying the current execution
+          symbol: Symbol;
+          // The cache key of the current execution. Used to identify equivalent executions
+          hash: CacheKeyType;
+        }
+      | undefined
+    >(undefined);
 
     const cancel = useCallback(() => {
       if (!runningRef.current) return;
@@ -147,6 +157,7 @@ export const createHook = <
              */
             latest: boolean;
           }>();
+          const startedAt = Date.now();
 
           // Preserve the state of the previous execution, in case we need to restore it upon cancelling the current execution
           const prevState = {
@@ -166,14 +177,15 @@ export const createHook = <
           userPromise.promise
             // This marks the very end of the execution, so we are doing all the cleanup here
             .finally(() => {
-              // If the promise is still running, we cancel it
-              // Note that other executions might have been started in the meantime, specifically because AbortController.abort() doesn't run synchronously,
-              // so we only clean up if the current execution is still running
               if (runningRef.current?.symbol == executionSymbol) {
                 runningRef.current = null;
 
+                setIsPending(false);
+
+                // If the promise is still running, we cancel it
+                // Note that other executions might have been started in the meantime, specifically because AbortController.abort() doesn't run synchronously,
+                // so we only clean up if the current execution is still running
                 if (abortController.signal.aborted) {
-                  setIsPending(false);
                   setIsRejected(prevState.isRejected);
                   setIsInitial(prevState.isInitial);
                   setData(prevState.data);
@@ -191,10 +203,10 @@ export const createHook = <
             .catch(() => {});
 
           runningRef.current = {
+            startedAt,
             symbol: executionSymbol,
             hash,
             abortController,
-            userPromise: userPromise.promise,
             runOptions: opts,
           };
 
@@ -219,13 +231,31 @@ export const createHook = <
 
               userPromise.resolve({
                 data: data as Awaited<ReturnType<Fn>>,
-                latest: runningRef.current?.symbol !== executionSymbol,
+                latest:
+                  !lastResolvedRef.current ||
+                  lastResolvedRef.current?.startedAt < startedAt,
               });
 
-              // If the execution is still running, we set the data state
-              if (runningRef.current?.symbol === executionSymbol) {
+              // If the current execution started after the last resolved execution started, we set the data
+              // This is different from e.g. https://github.com/slorber/react-async-hook, where data is only set if the current execution is the latest one
+              // That is overly restrictive, because it means that if the user calls the hook multiple times in a row, only the last call will be considered
+              // Even though considering earlier calls doesn't in itself lead to data inconsistency, as long as we don't discard data from later executions as a result
+              if (
+                !lastResolvedRef.current ||
+                lastResolvedRef.current?.startedAt < startedAt
+              ) {
+                lastResolvedRef.current = {
+                  data: data as Awaited<ReturnType<Fn>>,
+                  startedAt,
+                  symbol: executionSymbol,
+                  hash,
+                };
+
                 setData(data as Awaited<ReturnType<Fn>>);
-                setIsPending(false);
+              }
+
+              if (runningRef.current?.symbol === executionSymbol) {
+                setIsRejected(false);
               }
             })
             .catch((error) => {
@@ -242,11 +272,12 @@ export const createHook = <
               // Forward the error to the user promise
               userPromise.reject(error);
 
-              // If the execution is still running, we set the error state
+              // We only set the error state if the current execution is the latest one
+              // This is different from the data state, where we replace the data as long as the execution started after the last resolved execution started
+              // This is necessary to clearly associate the error with the execution that caused it
               if (runningRef.current?.symbol === executionSymbol) {
                 // Set error state
                 setError(error);
-                setIsPending(false);
                 setIsRejected(true);
               }
             });
