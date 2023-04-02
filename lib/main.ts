@@ -345,3 +345,5 @@ export const createHook = <
     } as const;
   };
 };
+
+export type { CacheStorage } from "./pMemoize";
