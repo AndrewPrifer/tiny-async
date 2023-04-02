@@ -218,8 +218,6 @@ export const createHook = <
             setData(undefined);
           }
 
-          console.log("Running", hash);
-
           // If the async function supports aborting, we pass the AbortController's signal to it in addition to the arguments
           const promise = abortable
             ? // @ts-ignore TypeScript is not smart enough for this yet
