@@ -65,7 +65,12 @@ export const createHook = <
   return (hookOptions?: RunConfig) => {
     // State containing the status of the async function
     const [data, setData] = useState<Awaited<ReturnType<Fn>> | undefined>();
-    const [error, setError] = useState<Error | undefined>();
+    // TypeScript has no mechanism for declaring or inferring thrown errors.
+    // An option would be to make it a generic parameter, but that'd make it the single manually specified generic parameter,
+    // which would in turn force manually typing the rest of the parameters, which would be a pain, and wouldn't be typesafe either,
+    // since the error could be of any type. The only type safe way right now to coerce errors to a certain type
+    // is to use a type guard in the catch clause.
+    const [error, setError] = useState<any>();
     const [isPending, setIsPending] = useState(false);
     const [isInitial, setIsInitial] = useState(true);
     // Error and isRejected are managed independently because a promise can be rejected with undefined, in which case error wouldn't be super useful
